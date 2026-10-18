@@ -11,3 +11,7 @@ autoscaling:
   targetCPUUtilizationPercentage: 50
 monitoring:
   enabled: true
+vault:
+  enabled: true
+  role: python-dev
+  secretPath: secret/data/python-api/dev

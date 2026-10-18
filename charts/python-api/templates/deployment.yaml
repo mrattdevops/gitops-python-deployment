@@ -16,8 +16,21 @@ spec:
     metadata:
       labels:
         app: {{ .Release.Name }}
+      {{- if .Values.vault.enabled }}
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: {{ .Values.vault.role | quote }}
+        vault.hashicorp.com/service: "http://vault-active.vault.svc.cluster.local:8200"
+        vault.hashicorp.com/agent-inject-secret-config.json: {{ .Values.vault.secretPath | quote }}
+        vault.hashicorp.com/agent-inject-template-config.json: |
+          {{ printf "{{- with secret %q -}}" .Values.vault.secretPath }}
+          {{ "{{ .Data.data | toJSON }}" }}
+          {{ "{{- end -}}" }}
+      {{- end }}
     spec:
-      automountServiceAccountToken: false
+      serviceAccountName: python-api
+      automountServiceAccountToken: {{ .Values.vault.enabled }}
+
       containers:
         - name: python-api
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"

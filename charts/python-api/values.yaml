@@ -37,3 +37,8 @@ ingress:
 
 monitoring:
   enabled: false
+
+vault:
+  enabled: false
+  role: ""
+  secretPath: ""

@@ -7,3 +7,8 @@ image:
 
 autoscaling:
   enabled: false
+
+vault:
+  enabled: true
+  role: python-prod
+  secretPath: secret/data/python-api/prod
