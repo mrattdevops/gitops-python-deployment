@@ -19,6 +19,7 @@ spec:
       {{- if .Values.vault.enabled }}
       annotations:
         vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/template-static-secret-render-interval: "30s"
         vault.hashicorp.com/role: {{ .Values.vault.role | quote }}
         vault.hashicorp.com/service: "http://vault-active.vault.svc.cluster.local:8200"
         vault.hashicorp.com/agent-inject-secret-config.json: {{ .Values.vault.secretPath | quote }}
