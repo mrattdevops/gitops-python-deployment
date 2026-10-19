@@ -31,6 +31,43 @@ kubectl port-forward -n gitops-prod deployment/python-api-prod 8082:8080
 curl -sS http://localhost:8082/api/info | jq .
 ```
 
+## KEDA request-based scale-down
+
+Dev uses a target of 100 requests/minute per replica, with a minimum of one
+replica. After stopping load, allow roughly four minutes for the two-minute
+Prometheus rate window and the 120-second HPA scale-down stabilization window,
+plus scrape and controller delays. `cooldownPeriod` controls scale-to-zero;
+scaling from four replicas to one is handled by the HPA.
+
+```bash
+kubectl get hpa,scaledobject -n gitops-dev
+kubectl describe hpa keda-hpa-python-api-dev-http -n gitops-dev
+kubectl describe scaledobject python-api-dev-http -n gitops-dev
+kubectl get deployment python-api-dev -n gitops-dev -w
+```
+
+If the HPA target is `<unknown>`, inspect the ScaledObject events. An empty
+Prometheus result with `ignoreNullValues: "false"` is a metric error, which blocks
+scale-down. Idle replacement pods may not export `http_requests_total`: the app
+creates its labeled counters on the first business request, and excludes health
+probes and `/metrics` from counting.
+
+The dev query supplies zero for absent request series only when at least one
+matching `up` scrape metric equals one. If all targets are down or missing, the
+fallback stays empty so KEDA can report the monitoring failure. Check these
+queries in Prometheus when troubleshooting:
+
+```promql
+up{namespace="gitops-dev",service="python-api-dev"}
+http_requests_total{namespace="gitops-dev",service="python-api-dev"}
+(sum(rate(http_requests_total{namespace="gitops-dev",service="python-api-dev"}[2m])) * 60)
+  or (0 * (max(up{namespace="gitops-dev",service="python-api-dev"}) == 1))
+```
+
+Commit and push the dev values change to the tracked Git branch and let Argo CD
+sync it before checking recovery. The HPA metric should become numeric, and the
+deployment should return to one replica after stabilization when traffic is idle.
+
 ## Grafana startup probes
 
 Grafana may refuse connections on port 3000 while initializing its database and
