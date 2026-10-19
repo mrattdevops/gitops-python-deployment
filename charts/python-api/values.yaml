@@ -42,3 +42,11 @@ vault:
   enabled: false
   role: ""
   secretPath: ""
+
+keda:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 4
+  threshold: "100"
+  prometheusServer: ""
+  query: ""
