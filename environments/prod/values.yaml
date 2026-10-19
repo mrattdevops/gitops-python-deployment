@@ -2,7 +2,7 @@ replicaCount: 2
 app:
   environment: prod
 image:
-  tag: "36f432a"
+  tag: "56c38ee"
   repository: docker.io/mrattdevops/gitops-advanced-app
 
 autoscaling:
