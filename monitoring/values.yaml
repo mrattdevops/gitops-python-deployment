@@ -14,6 +14,15 @@ grafana:
   persistence:
     enabled: false
 
+  # Allow up to 5 minutes for initialization before readiness/liveness run.
+  startupProbe:
+    httpGet:
+      path: /api/health
+      port: grafana
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 60
+
   resources:
     requests:
       cpu: 25m

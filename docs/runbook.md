@@ -31,6 +31,24 @@ kubectl port-forward -n gitops-prod deployment/python-api-prod 8082:8080
 curl -sS http://localhost:8082/api/info | jq .
 ```
 
+## Grafana startup probes
+
+Grafana may refuse connections on port 3000 while initializing its database and
+services. `grafana.startupProbe` in `monitoring/values.yaml` checks `/api/health`
+every 5 seconds and allows 60 failures (about 5 minutes). Readiness and liveness
+checks start only after the startup probe succeeds. Startup probe warnings during
+initialization can still occur; persistent failures require investigation.
+
+```bash
+kubectl get pods -n monitoring -l app.kubernetes.io/name=grafana
+kubectl logs -n monitoring deployment/monitoring-grafana -c grafana --tail=100
+kubectl get events -n monitoring --sort-by=.metadata.creationTimestamp
+```
+
+If Grafana restarts, inspect the previous container's logs with `--previous`.
+Look for provisioning errors, resource exhaustion, or initialization that exceeds
+the startup budget before increasing the threshold further.
+
 ## Guardrails
 
 Do not publish credentials or secret values in screenshots. Do not delete Raft PVCs during app troubleshooting. Shamir unseal shares must be kept securely; a root token alone cannot unseal a sealed cluster. Manual snapshots are not a full DR plan.
