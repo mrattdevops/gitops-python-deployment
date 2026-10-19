@@ -27,7 +27,7 @@ spec:
       project: default
 
       source:
-        repoURL: https://github.com/mrattdevops/gitops-advanced-deployment.git
+        repoURL: https://github.com/mrattdevops/gitops-python-deployment.git
         targetRevision: main
         path: charts/python-api
 

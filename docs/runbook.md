@@ -19,7 +19,7 @@ kubectl get deployment python-api-prod -n gitops-prod -o jsonpath='{.spec.templa
 kubectl get pods -n gitops-prod -l app=python-api-prod -o jsonpath='{range .items[*]}{.metadata.name}{" => "}{.spec.initContainers[*].name}{" | "}{.spec.containers[*].name}{"\n"}{end}'
 ```
 
-For production verify every current Pod (not just `.items[0]`). Use `test -s` on `/vault/secrets/config.json`; never print its contents. Inspect `vault-agent-init` logs when auth or rendering fails.
+For production verify every current Pod (not just `.items[0]`). Use `test -s` on `/vault/secrets/config`; never print its contents. Inspect `vault-agent-init` logs when auth or rendering fails. Deploy the app refactor image together with this filename change; see [Vault integration](vault-integration.md) for the migration gate and commands.
 
 ## Flask connectivity
 
@@ -48,6 +48,12 @@ kubectl get events -n monitoring --sort-by=.metadata.creationTimestamp
 If Grafana restarts, inspect the previous container's logs with `--previous`.
 Look for provisioning errors, resource exhaustion, or initialization that exceeds
 the startup budget before increasing the threshold further.
+
+Grafana requests 100m CPU and 128Mi memory, with limits of 500m CPU and 512Mi
+memory. The previous 200m/256Mi limits left startup running near both ceilings.
+The Grafana chart derives `GOMEMLIMIT` from its memory limit; if applying a live
+resource patch, also match that environment variable to the Helm rendering
+(`460MiB` for the 512Mi limit).
 
 ## Guardrails
 
