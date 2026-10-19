@@ -1,47 +1,25 @@
-# Engineering case study — GitOps Python delivery platform
+# Case study: building a GitOps delivery platform with HA secrets management
 
 ## Problem
 
-I wanted to move beyond manually applying Kubernetes manifests and create a repeatable deployment flow with a clear separation between building a container image and deciding which image an environment should run.
+A Flask API needed a reproducible delivery workflow with traceable releases, safe environment promotion, autoscaling and centralized secrets instead of credentials in manifest files.
 
-## Approach
+## Solution
 
-I built a Python Flask API with pytest checks and containerized it using Docker. GitHub Actions performs CI and updates a separate GitOps repository. A Helm chart shares Kubernetes configuration across dev and prod. An Argo CD ApplicationSet generates two Applications: automated dev and manually synchronized prod. Metrics Server and HPA provide CPU-based scaling in dev; Prometheus and Grafana surface infrastructure and application metrics.
+Separated application CI from Kubernetes desired-state Git. Used GitHub Actions for tests, build, image scanning and SHA tagging, with Helm + Argo CD for dev auto-sync and manual prod promotion. Added Prometheus/Grafana and a three-member Vault Raft cluster using Kubernetes auth and Vault Agent injection.
 
-## Technical decisions
+## Engineering lessons
 
-- Kept application code separate from GitOps state.
-- Tagged images with Git commit SHAs for traceability.
-- Used a single reusable Helm chart with per-environment values.
-- Used PR-based promotion and manual Argo CD prod sync instead of automatically promoting every dev change.
-- Kept resource-constrained monitoring settings suitable for a local K3s node.
+1. **Container image completeness:** A new `vault_config.py` import crashed Gunicorn because the Docker build omitted the file. Correcting the Dockerfile and promoting a known tested image (`56c38ee`) restored the feature.
+2. **Application and infrastructure readiness are separate:** Argo CD could report healthy workloads while the Python Deployment Pod template lacked Vault annotations. Rendering Helm and checking injected containers localized the gap.
+3. **GitOps promotion matters:** The prod Pods successfully received Vault secrets but the old app version (`36f432a`) did not read the file. Promoting the tested image yielded `vault_config_loaded: true` on `/api/info`.
+4. **Least privilege is testable:** A dev-bound Vault role could read dev KV v2 data but was denied prod access with HTTP 403.
+5. **HA has a scope:** Leadership transferred between Vault peers, but all replicas share a single Rancher Desktop node.
 
-## Failures and what they taught me
+## Observed results
 
-| Situation | Diagnosis and response | Lesson |
-|---|---|---|
-| Git push `403` | Wrong GitHub credentials or token permission | Verify identity and scoped access |
-| Argo CD manifest error | Malformed YAML prevented rendering | Validate YAML/Helm before GitOps promotion |
-| `ImagePullBackOff` | Placeholder or invalid tag | Publish and verify artifacts before deployment |
-| CI tried localhost Kubernetes API | Runner lacked cluster access | Use offline schema checks instead of assuming kubeconfig |
-| Rollout timed out | Deliberately invalid prod-like image | Restore known-good Git desired state and re-sync |
-| HPA remained at max after load | Scale-down stabilization held prior recommendations | Distinguish desired replica calculation from instant scaling |
+Dev HPA reached four replicas and later returned to one; Vault Raft formed a three-voter cluster; injection was observed in both prod replicas; Flask reported production environment from Vault on the promoted image; a manual Raft snapshot was completed. Automated backups were intentionally excluded.
 
-## Observed outcomes
+## Next improvements
 
-- Dev and prod-like Applications reached `Synced / Healthy`.
-- Prod-like deployment recovered after rollback with two pods ready.
-- Dev HPA rose from one to four replicas during load, then returned to one.
-- Prometheus/Grafana infrastructure dashboards were configured, followed by application `/metrics` instrumentation and ServiceMonitor work.
-
-## Remaining engineering tasks
-
-- Migrate manually installed monitoring Helm release to Argo CD safely, preserving Grafana credentials and dashboard definitions.
-- Tighten GitHub Actions security, pin dependencies and action versions, and add branch protection.
-- Review scanning order and manifest-list architecture coverage.
-- Remove the CPU-intensive testing endpoint before any external exposure.
-- Add alerting, secrets management, network isolation, GitOps bootstrap and recovery instructions.
-
-## Portfolio framing
-
-This is a **production-inspired lab on a local single-node Kubernetes cluster**, not a production deployment. Its value is the engineering process, release controls, demonstrated recovery, autoscaling experiment, and operational visibility.
+TLS/mTLS, cloud KMS auto-unseal, distinct failure domains, off-node encrypted backup and isolated restore drills, token hardening, end-to-end monitoring and alerting. None should be presented as already delivered.

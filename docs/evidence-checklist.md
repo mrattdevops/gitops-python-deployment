@@ -1,19 +1,17 @@
 # Portfolio evidence checklist
 
-Add actual screenshots (with timestamps or commit IDs when useful) to `evidence/`, then embed them in the README.
+Capture real screenshots or sanitized outputs. Avoid tokens, JWTs, unseal keys, `/vault/secrets/config.json` contents, root login sessions, private hosts/IPs, and snapshot data.
 
-- [ ] GitHub Actions successful build/test/scan/push job (mask secrets)
-- [ ] Docker Hub image tags showing SHA traceability
-- [ ] Argo CD ApplicationSet with `python-api-dev` and `python-api-prod`
-- [ ] Both Applications `Synced / Healthy`
-- [ ] Helm dev/prod values or diffs showing environment distinction
-- [ ] Production promotion PR showing tag-only change
-- [ ] Rollback Git commit and recovered `2/2` rollout
-- [ ] HPA max of 4 during CPU load and return to 1 at idle
-- [ ] Grafana HPA replica time series
-- [ ] Grafana Flask request rate and P95 latency panels
-- [ ] Prometheus target state `UP` for Python API ServiceMonitor
-
-Recommended filenames: `ci-success.png`, `argocd-apps.png`, `hpa-scale.png`, `grafana-python-api.png`.
-
-Do not upload credentials, tokens, private IP addresses that need to remain internal, or sensitive environment variables. Redact before publishing.
+- [ ] GitHub Actions tests/build/tag-push and update to GitOps repo
+- [ ] Argo CD dev `Synced/Healthy`, prod manual sync configuration
+- [ ] Helm values split for dev/prod and prod image promotion PR
+- [ ] Dev HPA scale from 1→4→1, with relevant Grafana graph
+- [ ] Prometheus ServiceMonitor and API metrics dashboard
+- [ ] `vault operator raft list-peers`: 3 voters, one leader
+- [ ] Leadership change before/after (`vault-0` → `vault-1`)
+- [ ] Dev and both prod Pods showing Agent injection containers
+- [ ] `test -s /vault/secrets/config.json` success for all target Pods
+- [ ] `/api/info` showing prod environment, `vault_config_loaded: true`, version `56c38ee`
+- [ ] Sanitized 403 for dev-role attempt to access prod secret
+- [ ] Manual snapshot inspection and checksum `OK`
+- [ ] Optional: independent prod-role authorization denial test and isolated restore exercise (not yet demonstrated)

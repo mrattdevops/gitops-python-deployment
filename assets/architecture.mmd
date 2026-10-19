@@ -1,0 +1,27 @@
+flowchart TD
+  CODE[gitops-python-app] --> CI[GitHub Actions: test / build / scan]
+  CI --> HUB[(Docker Hub: immutable SHA tag)]
+  CI -->|update dev tag| GIT[(gitops-python-deployment)]
+  GIT --> ARGO[Argo CD ApplicationSet]
+  ARGO -->|auto sync| DEV[Flask Dev + Vault Agent]
+  ARGO -->|manual prod sync| PROD[Flask Prod x2 + Vault Agent]
+  HUB --> DEV
+  HUB --> PROD
+  subgraph K3S[Single-node Rancher Desktop K3s]
+    DEV
+    PROD
+    subgraph VAULT[Vault HA with integrated Raft]
+      V0[vault-0]
+      V1[vault-1]
+      V2[vault-2]
+    end
+    PROM[Prometheus + ServiceMonitor]
+    GRAF[Grafana]
+    HPA[Dev HPA]
+  end
+  DEV -->|Kubernetes JWT / KV v2 dev policy| VAULT
+  PROD -->|Kubernetes JWT / KV v2 prod policy| VAULT
+  DEV --> PROM
+  PROD --> PROM
+  PROM --> GRAF
+  HPA --> DEV
