@@ -2,7 +2,7 @@ replicaCount: 1
 app:
   environment: dev
 image:
-  tag: "3c68997"
+  tag: "56c38ee"
   repository: docker.io/mrattdevops/gitops-advanced-app
 autoscaling:
   enabled: true
