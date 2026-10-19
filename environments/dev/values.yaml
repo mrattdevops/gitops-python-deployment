@@ -2,26 +2,21 @@ replicaCount: 1
 app:
   environment: dev
 image:
-  tag: "d82852a"
+  tag: "45daf59"
   repository: docker.io/mrattdevops/gitops-advanced-app
-
 autoscaling:
   enabled: false
   minReplicas: 1
   maxReplicas: 4
   targetCPUUtilizationPercentage: 50
-
 monitoring:
   enabled: true
-
 vault:
   enabled: true
   role: python-dev
   secretPath: secret/data/python-api/dev
-
 serviceMonitor:
   enabled: true
-
 keda:
   enabled: true
   minReplicas: 1
