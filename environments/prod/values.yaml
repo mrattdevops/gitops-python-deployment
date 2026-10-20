@@ -15,11 +15,3 @@ vault:
 
 serviceMonitor:
   enabled: false
-
-keda:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 4
-  threshold: "100"
-  prometheusServer: "http://monitoring-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090"
-  query: 'sum(rate(http_requests_total{namespace="gitops-dev",service="python-api-dev"}[2m])) * 60'

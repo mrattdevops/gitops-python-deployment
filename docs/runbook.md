@@ -31,41 +31,43 @@ kubectl port-forward -n gitops-prod deployment/python-api-prod 8082:8080
 curl -sS http://localhost:8082/api/info | jq .
 ```
 
-## KEDA request-based scale-down
+## Prometheus Adapter request-based scale-down
 
 Dev uses a target of 100 requests/minute per replica, with a minimum of one
 replica. After stopping load, allow roughly four minutes for the two-minute
 Prometheus rate window and the 120-second HPA scale-down stabilization window,
-plus scrape and controller delays. `cooldownPeriod` controls scale-to-zero;
-scaling from four replicas to one is handled by the HPA.
+plus scrape and controller delays. Prometheus Adapter exposes the per-pod
+`http_requests_per_minute` metric through `custom.metrics.k8s.io`; the HPA handles
+scaling. See [adapter installation and migration](prometheus-adapter.md) before
+the first sync of this configuration.
 
 ```bash
-kubectl get hpa,scaledobject -n gitops-dev
-kubectl describe hpa keda-hpa-python-api-dev-http -n gitops-dev
-kubectl describe scaledobject python-api-dev-http -n gitops-dev
+kubectl get apiservice v1beta1.custom.metrics.k8s.io
+kubectl get --raw '/apis/custom.metrics.k8s.io/v1beta1/namespaces/gitops-dev/pods/*/http_requests_per_minute?labelSelector=app%3Dpython-api-dev'
+kubectl get hpa -n gitops-dev
+kubectl describe hpa python-api-dev -n gitops-dev
 kubectl get deployment python-api-dev -n gitops-dev -w
 ```
 
-If the HPA target is `<unknown>`, inspect the ScaledObject events. An empty
-Prometheus result with `ignoreNullValues: "false"` is a metric error, which blocks
-scale-down. Idle replacement pods may not export `http_requests_total`: the app
+If the HPA target is `<unknown>`, inspect HPA events, the custom metrics API, and
+adapter logs. Unavailable metrics block or limit scale-down. Idle replacement
+pods may not export `http_requests_total`: the app
 creates its labeled counters on the first business request, and excludes health
 probes and `/metrics` from counting.
 
-The dev query supplies zero for absent request series only when at least one
-matching `up` scrape metric equals one. If all targets are down or missing, the
-fallback stays empty so KEDA can report the monitoring failure. Check these
-queries in Prometheus when troubleshooting:
+The adapter discovers the metric from the always-present `up` scrape series.
+Its query supplies zero for an absent request rate only when that pod has a
+healthy scrape target. Down or missing targets receive no zero fallback.
+Check these queries in Prometheus when troubleshooting:
 
 ```promql
 up{namespace="gitops-dev",service="python-api-dev"}
 http_requests_total{namespace="gitops-dev",service="python-api-dev"}
-(sum(rate(http_requests_total{namespace="gitops-dev",service="python-api-dev"}[2m])) * 60)
-  or (0 * (max(up{namespace="gitops-dev",service="python-api-dev"}) == 1))
+(sum by (namespace, pod) (rate(http_requests_total{namespace="gitops-dev",service="python-api-dev"}[2m])) * 60)
+  or on (namespace, pod) (0 * (max by (namespace, pod) (up{namespace="gitops-dev",service="python-api-dev"}) == 1))
 ```
 
-Commit and push the dev values change to the tracked Git branch and let Argo CD
-sync it before checking recovery. The HPA metric should become numeric, and the
+The HPA metric should be numeric, and the
 deployment should return to one replica after stabilization when traffic is idle.
 
 ## Grafana startup probes

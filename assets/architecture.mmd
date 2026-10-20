@@ -17,11 +17,14 @@ flowchart TD
     end
     PROM[Prometheus + ServiceMonitor]
     GRAF[Grafana]
-    HPA[Dev HPA]
+    ADAPTER[Prometheus Adapter: custom metrics API]
+    HPA[Dev HPA: 100 requests/minute per pod]
   end
   DEV -->|Kubernetes JWT / KV v2 dev policy| VAULT
   PROD -->|Kubernetes JWT / KV v2 prod policy| VAULT
   DEV --> PROM
   PROD --> PROM
   PROM --> GRAF
+  PROM --> ADAPTER
+  ADAPTER --> HPA
   HPA --> DEV

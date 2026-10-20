@@ -6,7 +6,7 @@ metadata:
   labels:
     app: {{ .Release.Name }}
 spec:
-  {{- if not (or .Values.autoscaling.enabled .Values.keda.enabled) }}
+  {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
   selector:

@@ -1,0 +1,38 @@
+prometheus:
+  url: http://monitoring-kube-prometheus-prometheus.monitoring.svc.cluster.local
+  port: 9090
+
+metricsRelistInterval: 30s
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+rules:
+  default: false
+  custom:
+    # Discover from `up`, which exists before an idle app's first business request.
+    # Map each result back to the Kubernetes namespace and pod used by the HPA.
+    - seriesQuery: 'up{namespace=~"gitops-(dev|prod)",service=~"python-api-(dev|prod)",pod!=""}'
+      resources:
+        overrides:
+          namespace:
+            resource: namespace
+          pod:
+            resource: pod
+      name:
+        matches: "^up$"
+        as: http_requests_per_minute
+      # Return one rate per pod. A healthy idle pod gets zero; an unavailable
+      # scrape target gets no fallback so missing metrics remain visible.
+      metricsQuery: >-
+        (sum by (<<.GroupBy>>) (
+          rate(http_requests_total{<<.LabelMatchers>>,namespace=~"gitops-(dev|prod)",service=~"python-api-(dev|prod)"}[2m])
+        ) * 60)
+        or on (<<.GroupBy>>) (0 * (max by (<<.GroupBy>>) (
+          up{<<.LabelMatchers>>,namespace=~"gitops-(dev|prod)",service=~"python-api-(dev|prod)"}
+        ) == 1))

@@ -31,6 +31,17 @@ autoscaling:
   minReplicas: 1
   maxReplicas: 4
   targetCPUUtilizationPercentage: 50
+  # Empty metrics keeps CPU scaling available; environments can supply custom metrics.
+  metrics: []
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 30
+    scaleDown:
+      stabilizationWindowSeconds: 120
 
 ingress:
   enabled: false
@@ -38,15 +49,10 @@ ingress:
 monitoring:
   enabled: false
 
+serviceMonitor:
+  enabled: false
+
 vault:
   enabled: false
   role: ""
   secretPath: ""
-
-keda:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 4
-  threshold: "100"
-  prometheusServer: ""
-  query: ""

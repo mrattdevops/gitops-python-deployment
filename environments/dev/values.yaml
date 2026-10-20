@@ -5,10 +5,17 @@ image:
   tag: "45daf59"
   repository: docker.io/mrattdevops/gitops-advanced-app
 autoscaling:
-  enabled: false
+  enabled: true
   minReplicas: 1
   maxReplicas: 4
-  targetCPUUtilizationPercentage: 50
+  metrics:
+    - type: Pods
+      pods:
+        metric:
+          name: http_requests_per_minute
+        target:
+          type: AverageValue
+          averageValue: "100"
 monitoring:
   enabled: true
 vault:
@@ -17,14 +24,3 @@ vault:
   secretPath: secret/data/python-api/dev
 serviceMonitor:
   enabled: true
-keda:
-  enabled: true
-  minReplicas: 1
-  maxReplicas: 4
-  threshold: "100"
-  prometheusServer: "http://monitoring-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090"
-  # Idle replacement pods have no labeled request counters until their first request.
-  # Return zero only while a scrape target is healthy; keep scrape failures visible.
-  query: >-
-    (sum(rate(http_requests_total{namespace="gitops-dev",service="python-api-dev"}[2m])) * 60)
-    or (0 * (max(up{namespace="gitops-dev",service="python-api-dev"}) == 1))

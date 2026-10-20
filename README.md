@@ -2,7 +2,7 @@
 
 > **Hands-on DevOps portfolio | Kubernetes delivery, security, autoscaling, and observability**
 
-An end-to-end, GitOps-driven delivery platform for a Flask API. Source changes pass through GitHub Actions and Docker Hub; image changes are committed to a separate Kubernetes configuration repository and reconciled by Argo CD. The platform includes CPU autoscaling, Prometheus/Grafana, and **HashiCorp Vault with a three-member integrated Raft cluster** for application secrets.
+An end-to-end, GitOps-driven delivery platform for a Flask API. Source changes pass through GitHub Actions and Docker Hub; image changes are committed to a separate Kubernetes configuration repository and reconciled by Argo CD. The platform includes request-based autoscaling through Prometheus Adapter, Prometheus/Grafana, and **HashiCorp Vault with a three-member integrated Raft cluster** for application secrets.
 
 **Repositories:** [Python application](https://github.com/mrattdevops/gitops-python-app) · [GitOps configuration](https://github.com/mrattdevops/gitops-python-deployment)
 
@@ -23,7 +23,8 @@ flowchart TB
     DockerHub --> Prod
     Dev --> K3sDev[K3s: gitops-dev]
     Prod --> K3sProd[K3s: gitops-prod]
-    MetricsServer --> HPA[HPA: CPU target 50%]
+    Prometheus --> Adapter[Prometheus Adapter: custom metrics API]
+    Adapter --> HPA[HPA: 100 requests/minute per pod]
     HPA --> K3sDev
     K3sDev --> Prometheus
     K3sProd --> Prometheus
@@ -40,7 +41,7 @@ Editable diagram: [`assets/architecture.mmd`](assets/architecture.mmd).
 | CI | GitHub Actions: tests, image build/push, vulnerability scanning, GitOps image-tag update |
 | Registry | Docker Hub; SHA-tagged `docker.io/mrattdevops/gitops-advanced-app` |
 | Deployment | Helm chart and Argo CD ApplicationSet; dev auto-sync, prod manual sync |
-| Kubernetes | Rancher Desktop / K3s; dev CPU-based HPA |
+| Kubernetes | Rancher Desktop / K3s; dev request-based HPA via Prometheus Adapter |
 | Observability | Prometheus, Grafana, ServiceMonitor, Kubernetes metrics |
 | Secrets | Vault HA, integrated Raft, KV v2, Kubernetes auth, Agent Injector |
 | Recovery | Manual Raft snapshot; manual Shamir unseal |
@@ -49,7 +50,7 @@ Editable diagram: [`assets/architecture.mmd`](assets/architecture.mmd).
 
 - **GitOps delivery:** CI updates a versioned image tag in Git; Argo CD reconciles dev automatically. Production-like releases require explicit promotion and manual sync.
 - **Rollback:** Recovered a failed production-like deployment by restoring a previously working Git image tag.
-- **Autoscaling:** Dev HPA scaled from 1 to 4 replicas under load and later returned to 1.
+- **Autoscaling:** Previous dev HPA tests scaled from 1 to 4 replicas under load and later returned to 1. The current manifests replace KEDA with Prometheus Adapter; live migration and a repeat scaling test are required.
 - **Monitoring:** Platform metrics in Grafana and Flask metrics via Prometheus / ServiceMonitor.
 - **Vault HA:** Three Raft voting members; exercised leadership handoff (`vault-0` to `vault-1`). Pods and encrypted Raft PVCs are on one Kubernetes node.
 - **Automatic secret injection:** Both dev and prod Python Pods received `vault-agent-init` and `vault-agent`, and `/vault/secrets/config.json` was verified nonempty.
@@ -92,6 +93,7 @@ Vault backup automation files are deliberately excluded. This package adds **doc
 - [Architecture and design decisions](docs/architecture.md)
 - [Vault secret injection and authorization](docs/vault-integration.md)
 - [Deployment, verification and incident runbook](docs/runbook.md)
+- [Prometheus Adapter installation and KEDA migration](docs/prometheus-adapter.md)
 - [Promotion and rollback](docs/release-process.md)
 - [Manual Raft backup and restore cautions](docs/vault-operations.md)
 - [Engineering case study](docs/case-study.md)
